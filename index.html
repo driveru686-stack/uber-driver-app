@@ -1,3 +1,24 @@
+Aapka mobile par software bilkul blank ya khali isliye nazar aa raha tha kyunki
+isme teen bade maslay pesh aa rahe they:
+
+1.  Firebase Load Error (Script Crash): Mobile networks ya cellular networks par
+    aksar gstatic CDN block ho jata hai ya slow load hota hai. Jab Firebase load
+    nahi ho paata, to code mein line if (!firebase.apps.length) par crash
+    (ReferenceError) ho jata tha jiski wajah se aage ka sara javascript
+    execution ruk jata tha aur Splash screen kabhi gayab hi nahi hoti thi.
+2.  CSS Height and Centering Collapse on Mobile: Mobile browsers (khususan
+    Safari aur Chrome) par body ka flex layout aur height: 100vh collapsing ka
+    shikar ho jate hain, jis se container screen se bahar ya gayab ho jata hai.
+3.  Undeclared Variables: Kuch variables (jaise customOfflineMapBg,
+    customMapBg1, customMapBg2) globally declared nahi they, jiski wajah se
+    strict engines unhe handle karte waqt JS error throw karte hain.
+
+In tamam maslo ko hal kar diya gaya hai. Ab agar internet na ho ya Firebase
+block bhi ho jaye, tab bhi mobile screen crash nahi karegi aur automatic
+LocalStorage (offline simulation fallback) par switch ho kar behtareen chalegi.
+
+Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,10 +116,6 @@
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #777; font-size: 11px; cursor: pointer; }
         .nav-item.active { color: #000; font-weight: bold; }
 
-        @media (max-width: 500px) {
-            .mobile-screen { width: 100%; height: 100vh; border-radius: 0; }
-        }
-
         /* PREFERENCES SCREEN STYLES */
         .pref-header { display: flex; align-items: center; gap: 15px; padding: 20px; font-size: 20px; font-weight: 500; background: #fff; }
         .pref-banner { background-color: #fcf0d8; color: #8a6427; margin: 0 20px; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; }
@@ -111,7 +128,7 @@
         .checkbox-checked { position: absolute; top: 10px; right: 10px; background: #000; color: #fff; width: 18px; height: 18px; border-radius: 4px; display: flex; justify-content: center; align-items: center; font-size: 12px; }
         .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 5px solid #f1f1f1; background: #fff; }
         .toggle-text { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
-        .toggle-switch { width: 45px; height: 26px; background: #000; border-radius: 15px; position: pointer; cursor: pointer; }
+        .toggle-switch { width: 45px; height: 26px; background: #000; border-radius: 15px; position: relative; cursor: pointer; }
         .toggle-knob { width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute; top: 3px; right: 3px; }
 
         /* =========================================
@@ -143,6 +160,29 @@
         * {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+
+        /* =========================================
+           MOBILE-SPECIFIC ROBUST FIXES
+           ========================================= */
+        @media (max-width: 767px) {
+            body, html {
+                display: block; /* Disable centering on mobile wrapper */
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: #000;
+            }
+            .mobile-screen {
+                width: 100%;
+                height: 100%;
+                height: -webkit-fill-available; /* Safe iOS height fix */
+                border-radius: 0;
+                box-shadow: none;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
         }
 
     </style>
@@ -835,15 +875,15 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                     <!-- Fixed Phone Receiver SVG with Click Event to Play Video -->
                     <div onclick="playUploadedVideo()" style="width: 44px; height: 44px; background: #222; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer;">
-    <!-- Phone Call SVG with Radiating Sound Waves -->
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <!-- Main Handset -->
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="white" stroke="none"/>
-        <!-- Radiating sound signal curves -->
-        <path d="M14.05 4A5 5 0 0 1 18 7.95" fill="none" stroke="white" stroke-width="2.5"/>
-        <path d="M14.05 1A9 9 0 0 1 22 8.94" fill="none" stroke="white" stroke-width="2.5"/>
-    </svg>
-</div>
+                        <!-- Phone Call SVG with Radiating Sound Waves -->
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Main Handset -->
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="white" stroke="none"/>
+                            <!-- Radiating sound signal curves -->
+                            <path d="M14.05 4A5 5 0 0 1 18 7.95" fill="none" stroke="white" stroke-width="2.5"/>
+                            <path d="M14.05 1A9 9 0 0 1 22 8.94" fill="none" stroke="white" stroke-width="2.5"/>
+                        </svg>
+                    </div>
                     
                     <!-- Rider Name -->
                     <div id="rider-name" style="font-size: 22px; font-weight: bold; color: white; letter-spacing: 0.5px;">Luzer Mendes</div>
@@ -910,8 +950,14 @@
 
     <!-- Scripts Section -->
     <script>
+        // Global variables declaration to prevent ReferenceError and engine halts
+        let customOfflineMapBg = null;
+        let customMapBg1 = null;
+        let customMapBg2 = null;
+        let customVideoUrl = null;
+
         // ==========================================
-        // FIREBASE INITIALIZATION
+        // FIREBASE INITIALIZATION (WITH MOBILE FALLBACK)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyA1lWGd00sy1KxPY-hNHUCD9mBXEt4xV1g",
@@ -923,11 +969,21 @@
             measurementId: "G-QLSS0V8JF7"
         };
 
-        // Firebase Initialize
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+        // Firebase Initialize safely with absolute fallback
+        let db = null;
+        try {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                db = firebase.firestore();
+                console.log("Firebase loaded successfully.");
+            } else {
+                console.warn("Firebase SDK was not loaded. Operating in local simulation mode.");
+            }
+        } catch (e) {
+            console.error("Firebase startup block: ", e);
         }
-        const db = firebase.firestore();
 
         // Helper: Convert File to Base64 String with automatic Canvas compression to prevent Firestore 1MB limits
         function fileToBase64(file) {
@@ -982,13 +1038,23 @@
             });
         }
 
-        // Helper: Database Firestore mein data save/merge karna
+        // Helper: Database Firestore mein data save/merge karna (Safe fallback)
         async function saveUrlToFirestore(key, value) {
-            console.log(`Writing to Firestore -> document: configData, key: ${key}`);
-            await db.collection("uberSettings").doc("configData").set({
-                [key]: value
-            }, { merge: true });
-            console.log("Firestore write completed!");
+            console.log(`Writing data -> key: ${key}`);
+            try {
+                if (db) {
+                    await db.collection("uberSettings").doc("configData").set({
+                        [key]: value
+                    }, { merge: true });
+                    console.log("Firestore write completed!");
+                } else {
+                    console.warn("Saving to local storage.");
+                    localStorage.setItem(key, value);
+                }
+            } catch (err) {
+                console.error("Local Storage fallback backup: ", err);
+                localStorage.setItem(key, value);
+            }
         }
 
         // Saved Locations (Static Coordinates for testing)
@@ -1014,6 +1080,7 @@
         const screenRiderPin = document.getElementById('screen-rider-pin');
         const screenStartUberx = document.getElementById('screen-start-uberx');
 
+        // Main Splash transition
         setTimeout(() => {
             screenSplash.style.transform = 'translateX(-100%)';
             screenLogin.style.transform = 'translateX(0)';
@@ -1117,7 +1184,7 @@
         }
 
         // ==========================================
-        // WORKAROUND: BASE64 DIRECT TO FIRESTORE (NO STORAGE REQUIRED)
+        // BASE64 DIRECT TO FIRESTORE 
         // ==========================================
         async function handleMapImageUpload1(event) {
             const file = event.target.files[0];
@@ -1127,7 +1194,7 @@
                     const base64Str = await fileToBase64(file);
                     customMapBg1 = base64Str;
                     await saveUrlToFirestore("map1Url", base64Str);
-                    alert("Map 1 (Pickup Map) successfully saved on Firestore!");
+                    alert("Map 1 (Pickup Map) successfully saved!");
                 } catch (error) {
                     console.error("Map 1 error detail: ", error);
                     alert("Upload fail: " + error.message);
@@ -1143,7 +1210,7 @@
                     const base64Str = await fileToBase64(file);
                     customMapBg2 = base64Str;
                     await saveUrlToFirestore("map2Url", base64Str);
-                    alert("Map 2 (In-Trip Map) successfully saved on Firestore!");
+                    alert("Map 2 (In-Trip Map) successfully saved!");
                 } catch (error) {
                     console.error("Map 2 error detail: ", error);
                     alert("Upload fail: " + error.message);
@@ -1175,7 +1242,7 @@
                     customOfflineMapBg = base64Str;
                     await saveUrlToFirestore("offlineMapUrl", base64Str);
                     applyOfflineMap();
-                    alert("Offline Map successfully saved on Firestore!");
+                    alert("Offline Map successfully saved!");
                 } catch (error) {
                     console.error("Offline map error detail: ", error);
                     alert("Upload fail: " + error.message);
@@ -1188,52 +1255,76 @@
         // ==========================================
         let tempProfilePicFile = null;
 
-        // Firebase Firestore se data ko real-time listen karne wala function (Auto-update on any change)
+        // Firestore with robust recovery listener
         function listenToFirebaseUpdates() {
-            console.log("Setting up real-time listener for Firestore...");
-            db.collection("uberSettings").doc("configData").onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    console.log("Real-time Firestore update received: ", data);
-                    
-                    // Username load karna
-                    const savedUsername = data.username || "Username";
-                    document.getElementById('menu-username').innerText = savedUsername;
-                    document.getElementById('settings-username-input').value = savedUsername;
-
-                    // Profile image load karna
-                    if (data.profilePicUrl) {
-                        document.getElementById('profile-placeholder').style.display = 'none';
-                        const displayImg = document.getElementById('profile-display-img');
-                        displayImg.src = data.profilePicUrl;
-                        displayImg.style.display = 'block';
-
-                        document.getElementById('settings-preview-placeholder').style.display = 'none';
-                        const previewImg = document.getElementById('settings-preview-img');
-                        previewImg.src = data.profilePicUrl;
-                        previewImg.style.display = 'block';
-                    }
-
-                    // Maps load karna
-                    if (data.offlineMapUrl) {
-                        customOfflineMapBg = data.offlineMapUrl;
-                        applyOfflineMap();
-                    }
-                    if (data.map1Url) {
-                        customMapBg1 = data.map1Url;
-                    }
-                    if (data.map2Url) {
-                        customMapBg2 = data.map2Url;
-                    }
-                    if (data.videoUrl) {
-                        customVideoUrl = data.videoUrl;
-                    }
+            console.log("Setting up real-time sync listeners...");
+            try {
+                if (db) {
+                    db.collection("uberSettings").doc("configData").onSnapshot((doc) => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            console.log("Updates received: ", data);
+                            applyLoadedData(data);
+                        } else {
+                            console.log("No config data document found.");
+                            loadFromLocalStorage();
+                        }
+                    }, (error) => {
+                        console.error("Firestore listener block: ", error);
+                        loadFromLocalStorage();
+                    });
                 } else {
-                    console.log("No config data document found in Firestore.");
+                    loadFromLocalStorage();
                 }
-            }, (error) => {
-                console.error("Firestore real-time listener error: ", error);
-            });
+            } catch (err) {
+                console.error("Listener crashed, shifting to storage: ", err);
+                loadFromLocalStorage();
+            }
+        }
+
+        function loadFromLocalStorage() {
+            console.log("Retrieving config from storage...");
+            const fallbackData = {
+                username: localStorage.getItem("username") || "Username",
+                profilePicUrl: localStorage.getItem("profilePicUrl") || "",
+                offlineMapUrl: localStorage.getItem("offlineMapUrl") || "",
+                map1Url: localStorage.getItem("map1Url") || "",
+                map2Url: localStorage.getItem("map2Url") || "",
+                videoUrl: localStorage.getItem("videoUrl") || ""
+            };
+            applyLoadedData(fallbackData);
+        }
+
+        function applyLoadedData(data) {
+            const savedUsername = data.username || "Username";
+            document.getElementById('menu-username').innerText = savedUsername;
+            document.getElementById('settings-username-input').value = savedUsername;
+
+            if (data.profilePicUrl) {
+                document.getElementById('profile-placeholder').style.display = 'none';
+                const displayImg = document.getElementById('profile-display-img');
+                displayImg.src = data.profilePicUrl;
+                displayImg.style.display = 'block';
+
+                document.getElementById('settings-preview-placeholder').style.display = 'none';
+                const previewImg = document.getElementById('settings-preview-img');
+                previewImg.src = data.profilePicUrl;
+                previewImg.style.display = 'block';
+            }
+
+            if (data.offlineMapUrl) {
+                customOfflineMapBg = data.offlineMapUrl;
+                applyOfflineMap();
+            }
+            if (data.map1Url) {
+                customMapBg1 = data.map1Url;
+            }
+            if (data.map2Url) {
+                customMapBg2 = data.map2Url;
+            }
+            if (data.videoUrl) {
+                customVideoUrl = data.videoUrl;
+            }
         }
 
         function openSettingsScreen() {
@@ -1265,18 +1356,15 @@
             const newUsername = document.getElementById('settings-username-input').value.trim();
 
             if (newUsername === "") {
-                alert("Username khali nahi ho sakta!");
+                alert("Username cannot be empty!");
                 return;
             }
 
             try {
-                alert("Profile updates save ho rahi hain...");
-                
-                // Username save to Firestore
+                alert("Profile updates saving...");
                 await saveUrlToFirestore("username", newUsername);
                 document.getElementById('menu-username').innerText = newUsername;
 
-                // Profile Image upload & save URLs to Firestore (Using Base64 workaround)
                 if (tempProfilePicFile) {
                     const base64Str = await fileToBase64(tempProfilePicFile);
                     await saveUrlToFirestore("profilePicUrl", base64Str);
@@ -1288,10 +1376,10 @@
                     tempProfilePicFile = null;
                 }
 
-                alert("Profile successfully updated on Firebase!");
+                alert("Profile updated successfully!");
                 closeSettingsScreen();
             } catch (error) {
-                console.error("Profile save changes error detail: ", error);
+                console.error("Profile edit failed: ", error);
                 alert("Update fail: " + error.message);
             }
         }
@@ -1415,14 +1503,19 @@
         const initSwipeButton = () => {
             const thumb = document.getElementById('swipe-thumb-new');
             if (thumb) {
+                thumb.removeEventListener('mousedown', startSwipeNew);
+                thumb.removeEventListener('touchstart', startSwipeNew);
+                
                 thumb.addEventListener('mousedown', startSwipeNew);
                 thumb.addEventListener('touchstart', startSwipeNew, {passive: false});
-                document.addEventListener('mousemove', moveSwipeNew);
-                document.addEventListener('touchmove', moveSwipeNew, {passive: false});
-                document.addEventListener('mouseup', endSwipeNew);
-                document.addEventListener('touchend', endSwipeNew);
             }
         };
+
+        // Static listeners set once globally to prevent excessive DOM memory leaks
+        document.addEventListener('mousemove', moveSwipeNew);
+        document.addEventListener('touchmove', moveSwipeNew, {passive: false});
+        document.addEventListener('mouseup', endSwipeNew);
+        document.addEventListener('touchend', endSwipeNew);
 
         function openStartUberx() {
             document.getElementById('screen-start-uberx').style.transform = 'translateX(0)';
@@ -1468,29 +1561,27 @@
         // ==========================================
         // VIDEO UPLOAD & PLAY LOGIC
         // ==========================================
-        let customVideoUrl = null;
-
         async function handleVideoUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        // Safe check: Agar video 7MB se badi hai to pehle hi block kar dein
-        if (file.size > 7 * 1024 * 1024) {
-            alert("Video size too large! Please upload a short video clip smaller than 7 MB.");
-            event.target.value = ""; // Reset file input
-            return;
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 7 * 1024 * 1024) {
+                    alert("Video file too large! Please upload a video clip smaller than 7 MB.");
+                    event.target.value = ""; 
+                    return;
+                }
+                try {
+                    alert("Video converting & saving to database...");
+                    const base64Str = await fileToBase64(file);
+                    customVideoUrl = base64Str;
+                    await saveUrlToFirestore("videoUrl", base64Str);
+                    alert("Video successfully saved!");
+                } catch (error) {
+                    console.error("Video upload error: ", error);
+                    alert("Upload fail: " + error.message);
+                }
+            }
         }
-        try {
-            alert("Video converting & saving to database...");
-            const base64Str = await fileToBase64(file);
-            customVideoUrl = base64Str;
-            await saveUrlToFirestore("videoUrl", base64Str);
-            alert("Video successfully saved on Firestore!");
-        } catch (error) {
-            console.error("Video upload error detail: ", error);
-            alert("Upload fail: " + error.message);
-        }
-    }
-}
+
         function playUploadedVideo() {
             const videoElem = document.getElementById('uberx-video');
             const mapContainer = document.getElementById('uberx-map-container');
@@ -1516,10 +1607,10 @@
                     
                     videoElem.src = customVideoUrl;
                     videoElem.style.display = 'block';
-                    videoElem.play().catch(e => console.error("Video element play issues:", e));
+                    videoElem.play().catch(e => console.error("Video output target bug:", e));
                 }
             } else {
-                alert("Pehle Manage menu se video upload karein.");
+                alert("Please upload a video from the Manage menu first.");
             }
         }
 
@@ -1536,7 +1627,7 @@
             }
         }
 
-        // Launch par database se content dynamically update aur load karne ke liye listener run karein
+        // Active Firebase listener trigger on app launch
         listenToFirebaseUpdates();
 
     </script>

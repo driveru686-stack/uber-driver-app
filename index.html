@@ -1,24 +1,3 @@
-Aapka mobile par software bilkul blank ya khali isliye nazar aa raha tha kyunki
-isme teen bade maslay pesh aa rahe they:
-
-1.  Firebase Load Error (Script Crash): Mobile networks ya cellular networks par
-    aksar gstatic CDN block ho jata hai ya slow load hota hai. Jab Firebase load
-    nahi ho paata, to code mein line if (!firebase.apps.length) par crash
-    (ReferenceError) ho jata tha jiski wajah se aage ka sara javascript
-    execution ruk jata tha aur Splash screen kabhi gayab hi nahi hoti thi.
-2.  CSS Height and Centering Collapse on Mobile: Mobile browsers (khususan
-    Safari aur Chrome) par body ka flex layout aur height: 100vh collapsing ka
-    shikar ho jate hain, jis se container screen se bahar ya gayab ho jata hai.
-3.  Undeclared Variables: Kuch variables (jaise customOfflineMapBg,
-    customMapBg1, customMapBg2) globally declared nahi they, jiski wajah se
-    strict engines unhe handle karte waqt JS error throw karte hain.
-
-In tamam maslo ko hal kar diya gaya hai. Ab agar internet na ho ya Firebase
-block bhi ho jaye, tab bhi mobile screen crash nahi karegi aur automatic
-LocalStorage (offline simulation fallback) par switch ho kar behtareen chalegi.
-
-Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,7 +83,18 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         .alert-text h4 { margin: 0 0 5px 0; font-size: 16px; color: #444; }
         .alert-text p { margin: 0; font-size: 13px; color: #d93025; }
 
-        .fake-map { flex: 1; background-color: #dce8fc; border-radius: 20px; position: relative; overflow: hidden; margin-bottom: 15px; box-shadow: inset 0 0 20px rgba(255,255,255,0.5); }
+        .fake-map { 
+            flex: 1; 
+            background-color: #dce8fc; 
+            border-radius: 20px; 
+            position: relative; 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.5); 
+            background-size: contain; 
+            background-repeat: no-repeat; 
+            background-position: center;
+        }
         .map-lines { position: absolute; top: 0; left: 0; width: 105%; height: 100%; opacity: 0.3; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #a8c2f0 20px, #a8c2f0 22px), repeating-linear-gradient(-45deg, transparent, transparent 20px, #a8c2f0 20px, #a8c2f0 22px); }
         .map-text { position: absolute; font-size: 12px; color: #6a8ec2; font-weight: bold; letter-spacing: 1px; }
         .mt-1 { top: 15%; left: 10%; } .mt-2 { top: 30%; left: 15%; } .mt-3 { bottom: 20%; left: 20%; }
@@ -115,6 +105,10 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         .driver-nav { display: flex; justify-content: space-between; padding: 10px 20px 20px 20px; background: white; border-top: 1px solid #eee; }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #777; font-size: 11px; cursor: pointer; }
         .nav-item.active { color: #000; font-weight: bold; }
+
+        @media (max-width: 500px) {
+            .mobile-screen { width: 100%; height: 100vh; border-radius: 0; }
+        }
 
         /* PREFERENCES SCREEN STYLES */
         .pref-header { display: flex; align-items: center; gap: 15px; padding: 20px; font-size: 20px; font-weight: 500; background: #fff; }
@@ -160,29 +154,6 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         * {
             -ms-overflow-style: none;
             scrollbar-width: none;
-        }
-
-        /* =========================================
-           MOBILE-SPECIFIC ROBUST FIXES
-           ========================================= */
-        @media (max-width: 767px) {
-            body, html {
-                display: block; /* Disable centering on mobile wrapper */
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-                background-color: #000;
-            }
-            .mobile-screen {
-                width: 100%;
-                height: 100%;
-                height: -webkit-fill-available; /* Safe iOS height fix */
-                border-radius: 0;
-                box-shadow: none;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
         }
 
     </style>
@@ -812,7 +783,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         <div class="screen" id="screen-start-uberx" style="transform: translateX(100%); background-color: #111111; z-index: 90; display: flex; flex-direction: column; overflow: hidden;">
             
             <!-- Map Area -->
-            <div id="uberx-map-container" style="flex: 1; position: relative; background-color: #1a1c20; overflow: hidden; background-size: cover; background-position: center 8px; background-repeat: no-repeat;">
+            <div id="uberx-map-container" style="flex: 1; position: relative; background-color: #1a1c20; overflow: hidden; background-size: contain; background-position: center 8px; background-repeat: no-repeat;">
                 
                 <!-- Video Element Inside `#uberx-map-container` -->
                 <video id="uberx-video" style="display: none; width: 100%; height: 160%; object-fit: fill; position: absolute; top: 8px; left: 0; z-index: 1;" loop playsinline></video>
@@ -950,15 +921,12 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
 
     <!-- Scripts Section -->
     <script>
-        // Global variables declaration to prevent ReferenceError and engine halts
-        let customOfflineMapBg = null;
-        let customMapBg1 = null;
-        let customMapBg2 = null;
-        let customVideoUrl = null;
+        // ==========================================
+        // FIREBASE INITIALIZATION WITH RESILIENT FAILSAFE
+        // ==========================================
+        let db = null;
+        let firebaseInitialized = false;
 
-        // ==========================================
-        // FIREBASE INITIALIZATION (WITH MOBILE FALLBACK)
-        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyA1lWGd00sy1KxPY-hNHUCD9mBXEt4xV1g",
             authDomain: "known-bbec3.firebaseapp.com",
@@ -969,26 +937,24 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             measurementId: "G-QLSS0V8JF7"
         };
 
-        // Firebase Initialize safely with absolute fallback
-        let db = null;
         try {
             if (typeof firebase !== 'undefined') {
                 if (!firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
                 }
                 db = firebase.firestore();
-                console.log("Firebase loaded successfully.");
+                firebaseInitialized = true;
+                console.log("Firebase loaded and initialized.");
             } else {
-                console.warn("Firebase SDK was not loaded. Operating in local simulation mode.");
+                console.warn("Firebase SDK not loaded. Proceeding with local configuration mode.");
             }
-        } catch (e) {
-            console.error("Firebase startup block: ", e);
+        } catch (error) {
+            console.error("Firebase initialization failed: ", error);
         }
 
-        // Helper: Convert File to Base64 String with automatic Canvas compression to prevent Firestore 1MB limits
+        // Helper: Convert File to Base64 String with custom high-resolution compression to avoid blurry artifacts
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
-                // If it's a video, we don't compress via canvas, we just read it directly
                 if (file.type.startsWith('video/')) {
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
@@ -997,7 +963,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                     return;
                 }
 
-                // Image compression logic using Canvas to dynamically downsize large photos
+                // Image compression logic with high-resolution dimensions for crisp mobile visualization
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = (event) => {
@@ -1007,8 +973,8 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         
-                        const MAX_WIDTH = 700; // Resize to max 700px width/height to drastically drop file size
-                        const MAX_HEIGHT = 700;
+                        const MAX_WIDTH = 1600; // Increased to 1600px for retina-ready clarity
+                        const MAX_HEIGHT = 1600;
                         let width = img.width;
                         let height = img.height;
                         
@@ -1028,8 +994,8 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                         canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // Output as compressed JPEG with 50% quality (will safely fit within 50KB-100KB)
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
+                        // Output as compressed JPEG with high quality (0.85) to prevent blurring
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
                         resolve(compressedBase64);
                     };
                     img.onerror = err => reject(err);
@@ -1038,22 +1004,22 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             });
         }
 
-        // Helper: Database Firestore mein data save/merge karna (Safe fallback)
+        // Helper: Database Firestore write with clean localStorage fallback
         async function saveUrlToFirestore(key, value) {
-            console.log(`Writing data -> key: ${key}`);
-            try {
-                if (db) {
+            console.log(`Writing data to document: configData, key: ${key}`);
+            if (firebaseInitialized && db) {
+                try {
                     await db.collection("uberSettings").doc("configData").set({
                         [key]: value
                     }, { merge: true });
-                    console.log("Firestore write completed!");
-                } else {
-                    console.warn("Saving to local storage.");
+                    console.log("Firestore updated successfully.");
+                } catch (e) {
+                    console.error("Firestore update failed: ", e);
                     localStorage.setItem(key, value);
                 }
-            } catch (err) {
-                console.error("Local Storage fallback backup: ", err);
+            } else {
                 localStorage.setItem(key, value);
+                console.log("Saved to localStorage fallback.");
             }
         }
 
@@ -1080,7 +1046,6 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         const screenRiderPin = document.getElementById('screen-rider-pin');
         const screenStartUberx = document.getElementById('screen-start-uberx');
 
-        // Main Splash transition
         setTimeout(() => {
             screenSplash.style.transform = 'translateX(-100%)';
             screenLogin.style.transform = 'translateX(0)';
@@ -1184,19 +1149,23 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         }
 
         // ==========================================
-        // BASE64 DIRECT TO FIRESTORE 
+        // DYNAMIC FILE BACKGROUND UPLOADING
         // ==========================================
+        let customOfflineMapBg = null;
+        let customMapBg1 = null;
+        let customMapBg2 = null;
+
         async function handleMapImageUpload1(event) {
             const file = event.target.files[0];
             if (file) {
                 try {
-                    alert("Map 1 converting & saving to database...");
+                    alert("Converting Map 1 to base64 & writing database config...");
                     const base64Str = await fileToBase64(file);
                     customMapBg1 = base64Str;
                     await saveUrlToFirestore("map1Url", base64Str);
-                    alert("Map 1 (Pickup Map) successfully saved!");
+                    alert("Map 1 (Pickup Map) has updated on the database!");
                 } catch (error) {
-                    console.error("Map 1 error detail: ", error);
+                    console.error("Map 1 storage error: ", error);
                     alert("Upload fail: " + error.message);
                 }
             }
@@ -1206,13 +1175,13 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             const file = event.target.files[0];
             if (file) {
                 try {
-                    alert("Map 2 converting & saving to database...");
+                    alert("Converting Map 2 to base64 & writing database config...");
                     const base64Str = await fileToBase64(file);
                     customMapBg2 = base64Str;
                     await saveUrlToFirestore("map2Url", base64Str);
-                    alert("Map 2 (In-Trip Map) successfully saved!");
+                    alert("Map 2 (In-Trip Map) has updated on the database!");
                 } catch (error) {
-                    console.error("Map 2 error detail: ", error);
+                    console.error("Map 2 storage error: ", error);
                     alert("Upload fail: " + error.message);
                 }
             }
@@ -1225,8 +1194,9 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             
             if (customOfflineMapBg && fakeMap) {
                 fakeMap.style.backgroundImage = `url(${customOfflineMapBg})`;
-                fakeMap.style.backgroundSize = '100% 100%';
+                fakeMap.style.backgroundSize = 'contain';
                 fakeMap.style.backgroundPosition = 'center';
+                fakeMap.style.backgroundRepeat = 'no-repeat';
                 
                 if (mapLines) mapLines.style.display = 'none';
                 mapTexts.forEach(txt => txt.style.display = 'none');
@@ -1237,14 +1207,14 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             const file = event.target.files[0];
             if (file) {
                 try {
-                    alert("Offline Map converting & saving to database...");
+                    alert("Converting Offline Map to base64 & writing database config...");
                     const base64Str = await fileToBase64(file);
                     customOfflineMapBg = base64Str;
                     await saveUrlToFirestore("offlineMapUrl", base64Str);
                     applyOfflineMap();
-                    alert("Offline Map successfully saved!");
+                    alert("Offline Map has updated on the database!");
                 } catch (error) {
-                    console.error("Offline map error detail: ", error);
+                    console.error("Offline map storage error: ", error);
                     alert("Upload fail: " + error.message);
                 }
             }
@@ -1255,47 +1225,30 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         // ==========================================
         let tempProfilePicFile = null;
 
-        // Firestore with robust recovery listener
+        // Firebase Firestore Realtime Sync Listener with Local Storage redundancy
         function listenToFirebaseUpdates() {
-            console.log("Setting up real-time sync listeners...");
-            try {
-                if (db) {
-                    db.collection("uberSettings").doc("configData").onSnapshot((doc) => {
-                        if (doc.exists) {
-                            const data = doc.data();
-                            console.log("Updates received: ", data);
-                            applyLoadedData(data);
-                        } else {
-                            console.log("No config data document found.");
-                            loadFromLocalStorage();
-                        }
-                    }, (error) => {
-                        console.error("Firestore listener block: ", error);
-                        loadFromLocalStorage();
-                    });
-                } else {
-                    loadFromLocalStorage();
-                }
-            } catch (err) {
-                console.error("Listener crashed, shifting to storage: ", err);
-                loadFromLocalStorage();
+            if (firebaseInitialized && db) {
+                console.log("Setting up Firestore dynamic dynamic listener...");
+                db.collection("uberSettings").doc("configData").onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        applyConfigData(data);
+                    } else {
+                        console.log("Database entry not initialized yet.");
+                    }
+                }, (error) => {
+                    console.error("Firestore listening stopped, shifting to local cache: ", error);
+                    loadLocalFallback();
+                });
+            } else {
+                console.warn("Firebase not active. Syncing local configuration cache.");
+                loadLocalFallback();
             }
         }
 
-        function loadFromLocalStorage() {
-            console.log("Retrieving config from storage...");
-            const fallbackData = {
-                username: localStorage.getItem("username") || "Username",
-                profilePicUrl: localStorage.getItem("profilePicUrl") || "",
-                offlineMapUrl: localStorage.getItem("offlineMapUrl") || "",
-                map1Url: localStorage.getItem("map1Url") || "",
-                map2Url: localStorage.getItem("map2Url") || "",
-                videoUrl: localStorage.getItem("videoUrl") || ""
-            };
-            applyLoadedData(fallbackData);
-        }
-
-        function applyLoadedData(data) {
+        function applyConfigData(data) {
+            console.log("Dynamic app configuration received:", data);
+            
             const savedUsername = data.username || "Username";
             document.getElementById('menu-username').innerText = savedUsername;
             document.getElementById('settings-username-input').value = savedUsername;
@@ -1325,6 +1278,18 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             if (data.videoUrl) {
                 customVideoUrl = data.videoUrl;
             }
+        }
+
+        function loadLocalFallback() {
+            const data = {
+                username: localStorage.getItem("username") || "Username",
+                profilePicUrl: localStorage.getItem("profilePicUrl") || "",
+                offlineMapUrl: localStorage.getItem("offlineMapUrl") || "",
+                map1Url: localStorage.getItem("map1Url") || "",
+                map2Url: localStorage.getItem("map2Url") || "",
+                videoUrl: localStorage.getItem("videoUrl") || ""
+            };
+            applyConfigData(data);
         }
 
         function openSettingsScreen() {
@@ -1361,7 +1326,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             }
 
             try {
-                alert("Profile updates saving...");
+                alert("Writing updated profile config...");
                 await saveUrlToFirestore("username", newUsername);
                 document.getElementById('menu-username').innerText = newUsername;
 
@@ -1376,10 +1341,10 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                     tempProfilePicFile = null;
                 }
 
-                alert("Profile updated successfully!");
+                alert("Profile credentials updated successfully!");
                 closeSettingsScreen();
             } catch (error) {
-                console.error("Profile edit failed: ", error);
+                console.error("Profile credentials save error: ", error);
                 alert("Update fail: " + error.message);
             }
         }
@@ -1401,6 +1366,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
 
         function moveSwipeNew(e) {
             if (!isSwipingNew) return;
+            if (e.cancelable) e.preventDefault(); // Prevents touch-scrolling while sliding on mobile
             
             const thumb = document.getElementById('swipe-thumb-new');
             const container = document.getElementById('swipe-container-new');
@@ -1464,6 +1430,9 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             const mapContainer = document.getElementById('uberx-map-container');
             if (customMapBg2) {
                 mapContainer.style.backgroundImage = `url(${customMapBg2})`;
+                mapContainer.style.backgroundSize = 'contain';
+                mapContainer.style.backgroundPosition = 'center';
+                mapContainer.style.backgroundRepeat = 'no-repeat';
             } else {
                 mapContainer.style.backgroundImage = `none`;
             }
@@ -1503,19 +1472,14 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         const initSwipeButton = () => {
             const thumb = document.getElementById('swipe-thumb-new');
             if (thumb) {
-                thumb.removeEventListener('mousedown', startSwipeNew);
-                thumb.removeEventListener('touchstart', startSwipeNew);
-                
                 thumb.addEventListener('mousedown', startSwipeNew);
                 thumb.addEventListener('touchstart', startSwipeNew, {passive: false});
+                document.addEventListener('mousemove', moveSwipeNew);
+                document.addEventListener('touchmove', moveSwipeNew, {passive: false});
+                document.addEventListener('mouseup', endSwipeNew);
+                document.addEventListener('touchend', endSwipeNew);
             }
         };
-
-        // Static listeners set once globally to prevent excessive DOM memory leaks
-        document.addEventListener('mousemove', moveSwipeNew);
-        document.addEventListener('touchmove', moveSwipeNew, {passive: false});
-        document.addEventListener('mouseup', endSwipeNew);
-        document.addEventListener('touchend', endSwipeNew);
 
         function openStartUberx() {
             document.getElementById('screen-start-uberx').style.transform = 'translateX(0)';
@@ -1527,9 +1491,13 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             const mapContainer = document.getElementById('uberx-map-container');
             const currentDest = document.getElementById('destination-text').innerText.trim();
 
+            // Set dynamic rendering rules securely with containment parameters
             if (currentDest.includes("Terminal 1")) {
                 if (customMapBg2) {
                     mapContainer.style.backgroundImage = `url(${customMapBg2})`;
+                    mapContainer.style.backgroundSize = 'contain';
+                    mapContainer.style.backgroundPosition = 'center';
+                    mapContainer.style.backgroundRepeat = 'no-repeat';
                 } else {
                     mapContainer.style.backgroundImage = `none`;
                 }
@@ -1537,6 +1505,9 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             } else {
                 if (customMapBg1) {
                     mapContainer.style.backgroundImage = `url(${customMapBg1})`;
+                    mapContainer.style.backgroundSize = 'contain';
+                    mapContainer.style.backgroundPosition = 'center';
+                    mapContainer.style.backgroundRepeat = 'no-repeat';
                 } else {
                     mapContainer.style.backgroundImage = `none`;
                 }
@@ -1561,22 +1532,24 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
         // ==========================================
         // VIDEO UPLOAD & PLAY LOGIC
         // ==========================================
+        let customVideoUrl = null;
+
         async function handleVideoUpload(event) {
             const file = event.target.files[0];
             if (file) {
                 if (file.size > 7 * 1024 * 1024) {
-                    alert("Video file too large! Please upload a video clip smaller than 7 MB.");
+                    alert("Video size too large! Please upload a short video clip smaller than 7 MB.");
                     event.target.value = ""; 
                     return;
                 }
                 try {
-                    alert("Video converting & saving to database...");
+                    alert("Converting video and writing database configuration...");
                     const base64Str = await fileToBase64(file);
                     customVideoUrl = base64Str;
                     await saveUrlToFirestore("videoUrl", base64Str);
-                    alert("Video successfully saved!");
+                    alert("Video has updated on the database!");
                 } catch (error) {
-                    console.error("Video upload error: ", error);
+                    console.error("Video storage error: ", error);
                     alert("Upload fail: " + error.message);
                 }
             }
@@ -1592,11 +1565,21 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                     videoElem.style.display = 'none';
                     
                     if (currentRideState === 1) {
-                        if (customMapBg1) mapContainer.style.backgroundImage = `url(${customMapBg1})`;
+                        if (customMapBg1) {
+                            mapContainer.style.backgroundImage = `url(${customMapBg1})`;
+                            mapContainer.style.backgroundSize = 'contain';
+                            mapContainer.style.backgroundPosition = 'center';
+                            mapContainer.style.backgroundRepeat = 'no-repeat';
+                        }
                         document.getElementById('top-alert-box').style.display = 'flex';
                         document.getElementById('top-navigation-bar-state2').style.display = 'none';
                     } else {
-                        if (customMapBg2) mapContainer.style.backgroundImage = `url(${customMapBg2})`;
+                        if (customMapBg2) {
+                            mapContainer.style.backgroundImage = `url(${customMapBg2})`;
+                            mapContainer.style.backgroundSize = 'contain';
+                            mapContainer.style.backgroundPosition = 'center';
+                            mapContainer.style.backgroundRepeat = 'no-repeat';
+                        }
                         document.getElementById('top-alert-box').style.display = 'none';
                         document.getElementById('top-navigation-bar-state2').style.display = 'flex';
                     }
@@ -1607,7 +1590,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
                     
                     videoElem.src = customVideoUrl;
                     videoElem.style.display = 'block';
-                    videoElem.play().catch(e => console.error("Video output target bug:", e));
+                    videoElem.play().catch(e => console.error("Dynamic browser block prevented autostarting:", e));
                 }
             } else {
                 alert("Please upload a video from the Manage menu first.");
@@ -1627,7 +1610,7 @@ Niche diye gaye mukammal code ko copy karke apni file mein paste karlein:
             }
         }
 
-        // Active Firebase listener trigger on app launch
+        // Run live configuration listener on script load
         listenToFirebaseUpdates();
 
     </script>
